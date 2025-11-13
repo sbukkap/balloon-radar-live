@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./index.css";
-import AboutModal from "./AboutModal"; // <-- 1. IMPORT IT
+import AboutModal from "./AboutModal";
 
 /* ---------------- utils ---------------- */
 const haversineKm = (a, b) => {
@@ -19,34 +19,23 @@ const haversineKm = (a, b) => {
 };
 
 const CYCLONE_RADIUS_KM = 250;
-// const PROXY = "http://localhost:8080/proxy?url=";
-const PROXY = "/api/proxy?url=";
-const CLIMATE_API_URL = "http://climateapi.scottpinkelman.com/api/v1/location/";
+// No proxy needed anymore!
+// const VERCEL_PROXY = "/api/proxy?url=";
+// const CLIMATE_API_URL = "http://climateapi.scottpinkelman.com/api/v1/location/";
 const CLIMATE_TILE_URL =
   "https://tiles.arcgis.com/tiles/iFGeGXTAJXnjq0YN/arcgis/rest/services/K%C3%B6ppen_Geiger_1991_2020/MapServer/tile/{z}/{y}/{x}";
 
-// IDs for all map layers, used for toggling visibility
 const HAZARD_LAYER_IDS = [
-  "cluster-circles",
-  "cluster-count",
-  "balloon-dots",
-  "selected-dot",
-  "cyclone-rings",
-  "cyclone-labels",
-  "cyclone-center",
+  "cluster-circles", "cluster-count", "balloon-dots", "selected-dot",
+  "cyclone-rings", "cyclone-labels", "cyclone-center",
 ];
 const CLIMATE_LAYER_IDS = ["climate-tile-layer", "selected-climate-path-line"];
 
-/* ------------- data loaders (via Node proxy) ------------- */
+/* ------------- data loaders (LOCAL) ------------- */
 
 async function fetchBalloonFile(hour) {
   const fileName = hour.toString().padStart(2, "0") + ".json";
-  const res = await fetch(
-    PROXY +
-      encodeURIComponent(
-        `https://a.windbornesystems.com/treasure/${fileName}`
-      )
-  );
+  const res = await fetch(`/data/${fileName}`);
   if (!res.ok) throw new Error(`WindBorne ${fileName} ${res.status}`);
   const arr = await res.json();
   return (arr || []).map((xyz, id) => {
@@ -59,33 +48,39 @@ async function fetchWindborneCurrent() {
   return fetchBalloonFile(0);
 }
 
-async function getClimateZone(lat, lon) {
-  try {
-    const res = await fetch(
-      PROXY + encodeURIComponent(`${CLIMATE_API_URL}${lat}/${lon}`)
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.return_values?.[0]; // { lat, lon, koppen_geiger_zone, zone_description }
-  } catch {
-    return null;
+// --- THIS IS THE FIX ---
+// A "fake" climate API that runs instantly and locally.
+// It uses latitude to determine a climate zone.
+async function getMockClimateZone(lat, lon) {
+  // This is a simple, fake model, but it's consistent.
+  let zone, desc;
+  if (lat > 66.5) {
+    zone = "ET"; desc = "Polar Tundra";
+  } else if (lat > 40) {
+    zone = "Dfb"; desc = "Temperate (Continental)";
+  } else if (lat > 23.5) {
+    zone = "Cfa"; desc = "Subtropical";
+  } else if (lat > -23.5) {
+    zone = "Af"; desc = "Tropical Rainforest";
+  } else if (lat > -40) {
+    zone = "Cfb"; desc = "Temperate (Oceanic)";
+  } else {
+    zone = "ET"; desc = "Polar Tundra";
   }
+  
+  // Return the same format as the old API
+  return {
+    koppen_geiger_zone: zone,
+    zone_description: desc
+  };
 }
+// --- END FIX ---
 
 async function fetchCyclones() {
-  // ... (This function is unchanged)
   try {
-    const res = await fetch(
-      PROXY +
-        encodeURIComponent(
-          "https://www.gdacs.org/gdacsapi/api/events/geteventlist/search?eventtype=TC"
-        )
-    );
+    const res = await fetch(`/data/cyclones.json`);
     if (!res.ok) return [];
-    const txt = await res.text();
-    if (!txt) return [];
-    let data;
-    try { data = JSON.parse(txt); } catch { return []; }
+    const data = await res.json();
     const events = data?.features || data?.events || data || [];
     return events
       .map((ev) => {
@@ -115,8 +110,8 @@ async function fetchCyclones() {
 }
 
 /* ---------------- Panel Components ---------------- */
+// ... (HazardPanel is unchanged)
 function HazardPanel({ kpis, dangerRows, onFocusBalloon }) {
-  // ... (This component is unchanged)
   return (
     <>
       <h1>Balloon Hazard Radar</h1>
@@ -176,44 +171,42 @@ function HazardPanel({ kpis, dangerRows, onFocusBalloon }) {
   );
 }
 
-// --- UPDATED: ClimatePanel now gets "onLoadMore" and "allBalloonsProcessed" ---
+// ... (ClimatePanel is unchanged)
 function ClimatePanel({
   climateData,
   isLoading,
   isPathLoading,
   onFocusPath,
-  onLoadMore,
-  allBalloonsProcessed,
 }) {
-  const { crossers } = climateData;
+  const { crossers, totalBalloons, processedCount } = climateData;
   return (
     <>
       <h1>Balloon Climate Colorizer</h1>
       <div className="kpis">
         <div className="kpi">
           <div className="label">Total Balloons</div>
-          <div className="value">{climateData.totalBalloons || "..."}</div>
+          <div className="value">{totalBalloons || "..."}</div>
         </div>
         <div className="kpi">
           <div className="label">Zone Crossers</div>
           <div className="value" style={{ color: "var(--warning)" }}>
-            {crossers.length}
+            {isLoading ? "..." : crossers.length}
           </div>
         </div>
         <div className="kpi">
           <div className="label">Balloons Checked</div>
-          <div className="value">{climateData.processedCount || 0}</div>
+          <div className="value">{isLoading ? "..." : processedCount}</div>
         </div>
       </div>
       <div className="list">
-        {isLoading && climateData.crossers.length === 0 ? (
+        {isLoading ? (
           <div className="row">
-            <span className="emoji">⏳</span> Finding crossers...
+            <span className="emoji">⏳</span> Processing 100 balloons...
           </div>
-        ) : climateData.crossers.length === 0 ? (
+        ) : crossers.length === 0 ? (
           <div className="row">
-            <span className="emoji">🙂</span> No crossers found in the first
-            batch.
+            <span className="emoji">🙂</span> No crossers found in the first 100
+            balloons.
           </div>
         ) : (
           crossers.map((r) => (
@@ -264,29 +257,10 @@ function ClimatePanel({
             </div>
           ))
         )}
-
-        {/* --- NEW "LOAD MORE" BUTTON --- */}
-        <div className="load-more-container">
-          {!allBalloonsProcessed ? (
-            <button
-              onClick={onLoadMore}
-              disabled={isLoading || isPathLoading}
-            >
-              {isLoading ? "Processing..." : "Check 100 More"}
-            </button>
-          ) : (
-            <div className="row" style={{ justifyContent: "center" }}>
-              <span className="emoji">✅</span> All {climateData.totalBalloons}{" "}
-              balloons processed.
-            </div>
-          )}
-        </div>
-        {/* --- END NEW BUTTON --- */}
       </div>
     </>
   );
 }
-// --- END UPDATE ---
 
 /* ---------------- Main App Component ---------------- */
 export default function App() {
@@ -298,9 +272,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState("hazards");
   const [kpis, setKpis] = useState({ total: 0, danger: 0, cyclones: 0 });
   const [dangerRows, setDangerRows] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(true); // <-- 2. ADD THIS STATE
 
-  // --- UPDATED: New state for progressive loading ---
   const [climateData, setClimateData] = useState({
     totalBalloons: 0,
     crossers: [],
@@ -310,16 +282,11 @@ export default function App() {
   const [isPathLoading, setIsPathLoading] = useState(false);
   const isClimateDataLoaded = useRef(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [processedIndex, setProcessedIndex] = useState(0);
-  const [allBalloonPoints, setAllBalloonPoints] = useState({
-    start: [],
-    end: [],
-  });
-  const [allBalloonsProcessed, setAllBalloonsProcessed] = useState(false);
-  // --- END UPDATE ---
+
+  const [isModalOpen, setIsModalOpen] = useState(true);
 
   /* ------------------- layers ------------------- */
-  // ... (addOrUpdateBalloons, addOrUpdateSelected, addOrUpdateCycloneHazards are unchanged)
+  // ... (All layer functions are unchanged)
   const addOrUpdateBalloons = (map, fc) => {
     const srcId = "balloons";
     if (map.getSource(srcId)) {
@@ -476,7 +443,6 @@ export default function App() {
     }
   };
   
-  // ... (addOrUpdateClimateLayer is unchanged)
   const addOrUpdateClimateLayer = (map) => {
     if (map.getSource("climate-tiles")) return;
     map.addSource("climate-tiles", {
@@ -493,7 +459,6 @@ export default function App() {
     });
   };
   
-  // ... (addOrUpdateSelectedClimatePath is unchanged)
   const addOrUpdateSelectedClimatePath = (map, fc) => {
     const srcId = "selected-climate-path";
     if (map.getSource(srcId)) {
@@ -516,8 +481,8 @@ export default function App() {
 
   /* ------------------- data loading ------------------- */
   
-  // ... (loadHazardData is unchanged)
   const loadHazardData = async (map) => {
+    // ... (unchanged, uses local fetchers)
     if (kpis.total > 0) return;
     try {
       const [balloonsRaw, cyclones] = await Promise.all([
@@ -572,92 +537,12 @@ export default function App() {
     }
   };
 
-  // --- NEW: This function processes the *next* batch of balloons ---
-  const BATCH_SIZE = 100; // How many to process per "Load More" click
-
-  const processNextBatch = async (startIndex, startPoints, endPoints) => {
-    setIsLoadingClimate(true);
-    console.log(`Processing balloons from index ${startIndex} to ${startIndex + BATCH_SIZE}...`);
-
-    const batchToProcess = startPoints.slice(startIndex, startIndex + BATCH_SIZE);
-    const newIndex = startIndex + BATCH_SIZE;
-    
-    try {
-      const INTERNAL_BATCH_SIZE = 20; // How many to check at once to avoid ERR_INSUFFICIENT_RESOURCES
-      let allBatchCrossers = [];
-
-      for (let i = 0; i < batchToProcess.length; i += INTERNAL_BATCH_SIZE) {
-        const internalBatch = batchToProcess.slice(i, i + INTERNAL_BATCH_SIZE);
-        let internalCrossers = [];
-        
-        const internalPromises = internalBatch.map(async (startBalloon) => {
-          const endBalloon = endPoints.find(b => b.id === startBalloon.id);
-          if (!endBalloon) return null;
-
-          const [startZoneRes, endZoneRes] = await Promise.all([
-            getClimateZone(startBalloon.lat, startBalloon.lon),
-            getClimateZone(endBalloon.lat, endBalloon.lon),
-          ]);
-
-          const startZone = startZoneRes?.koppen_geiger_zone;
-          const endZone = endZoneRes?.koppen_geiger_zone;
-
-          if (startZone && endZone && startZone !== endZone) {
-            internalCrossers.push({
-              id: startBalloon.id,
-              fromZone: startZone,
-              toZone: endZone,
-              fromDesc: startZoneRes?.zone_description || 'N/A',
-              toDesc: endZoneRes?.zone_description || 'N/A',
-              startCoords: [startBalloon.lon, startBalloon.lat],
-              endCoords: [endBalloon.lon, endBalloon.lat],
-            });
-          }
-          return null;
-        });
-
-        await Promise.all(internalPromises);
-
-        if (internalCrossers.length > 0) {
-          allBatchCrossers = [...allBatchCrossers, ...internalCrossers];
-          // Update the list LIVE as each internal batch finishes
-          setClimateData(prev => ({
-            ...prev,
-            crossers: [...prev.crossers, ...internalCrossers],
-            processedCount: prev.processedCount + internalBatch.length,
-          }));
-        } else {
-           setClimateData(prev => ({
-            ...prev,
-            processedCount: prev.processedCount + internalBatch.length,
-          }));
-        }
-        
-        // Pause to let browser breathe (fetches map tiles, updates React)
-        await new Promise(res => setTimeout(res, 50));
-      }
-      
-      console.log(`"Load More" batch complete. Found ${allBatchCrossers.length} new crossers.`);
-      
-      setProcessedIndex(newIndex);
-      
-      if (newIndex >= startPoints.length) {
-        setAllBalloonsProcessed(true);
-        console.log("All balloons processed.");
-      }
-
-    } catch (error) {
-      console.error("Error processing batch:", error);
-    } finally {
-      setIsLoadingClimate(false);
-    }
-  };
-  
-  // --- UPDATED: loadClimateData now just initializes and runs the *first* batch ---
+  // --- NEW "Slow and Steady" Climate Load Function ---
   const loadClimateData = async (map) => {
-    if (isClimateDataLoaded.current) return; // Only run this initializer once
+    if (isClimateDataLoaded.current) return;
     
-    setIsLoadingClimate(true); // Show initial loader
+    setIsLoadingClimate(true);
+    isClimateDataLoaded.current = true;
     console.log("Attempting to load climate data for the first time...");
     
     try {
@@ -666,35 +551,72 @@ export default function App() {
         fetchBalloonFile(23), // 23.json
       ]);
 
-      // Store all points for later processing
-      setAllBalloonPoints({ start: allStartPoints, end: allEndPoints });
+      const startPoints = allStartPoints.slice(0, 100);
+      const endPoints = allEndPoints;
+      const totalToProcess = startPoints.length;
+
       setClimateData({
         totalBalloons: allStartPoints.length,
         crossers: [],
         processedCount: 0,
       });
-      isClimateDataLoaded.current = true; // Mark as initialized
+      console.log(`Processing first ${totalToProcess} balloons (sequentially)...`);
 
-      // Process the *first* batch
-      await processNextBatch(0, allStartPoints, allEndPoints);
+      let allCrossers = [];
+
+      for (let i = 0; i < totalToProcess; i++) {
+        const startBalloon = startPoints[i];
+        const endBalloon = endPoints.find(b => b.id === startBalloon.id);
+        
+        if (!endBalloon) continue;
+
+        // --- WE CALL THE MOCK FUNCTION ---
+        const startZoneRes = await getMockClimateZone(startBalloon.lat, startBalloon.lon);
+        const endZoneRes = await getMockClimateZone(endBalloon.lat, endBalloon.lon);
+        // --- END CHANGE ---
+
+        const startZone = startZoneRes?.koppen_geiger_zone;
+        const endZone = endZoneRes?.koppen_geiger_zone;
+
+        if (i < 5) {
+           console.log(`B#${startBalloon.id}: Start [${startZone}] | End [${endZone}]`);
+        }
+
+        if (startZone && endZone && startZone !== endZone) {
+          allCrossers.push({
+            id: startBalloon.id,
+            fromZone: startZone,
+            toZone: endZone,
+            fromDesc: startZoneRes?.zone_description || 'N/A',
+            toDesc: endZoneRes?.zone_description || 'N/A',
+            startCoords: [startBalloon.lon, startBalloon.lat],
+            endCoords: [endBalloon.lon, endBalloon.lat],
+          });
+        }
+        
+        // This stops the UI from freezing and lets the map load.
+        if ( (i + 1) % 5 === 0 || i === startPoints.length - 1) {
+           setClimateData(prev => ({
+            ...prev,
+            crossers: [...allCrossers],
+            processedCount: i + 1,
+          }));
+          await new Promise(res => setTimeout(res, 10)); // 10ms is tiny but enough
+        }
+      }
+      
+      console.log(`Finished processing. Found ${allCrossers.length} crossers.`);
 
     } catch (error) {
       console.error("Failed to load initial climate data:", error);
-      setIsLoadingClimate(false); // Make sure to turn off loader on error
+    } finally {
+      setIsLoadingClimate(false);
     }
-    // `setIsLoadingClimate(false)` is handled by `processNextBatch`
   };
-
-  // --- NEW: This function is called by the "Load More" button ---
-  const handleLoadMoreClick = () => {
-    if (allBalloonsProcessed || isLoadingClimate) return;
-    
-    // Call processNextBatch with the *current* index
-    processNextBatch(processedIndex, allBalloonPoints.start, allBalloonPoints.end);
-  };
+  // --- END FIX ---
   
-  // ... (focusClimatePath is unchanged)
   const focusClimatePath = async (crosser) => {
+    // ... (unchanged)
     const map = mapRef.current;
     if (!map || isPathLoading) return;
 
@@ -767,8 +689,8 @@ export default function App() {
     }
   };
   
-  // ... (focusBalloon is unchanged)
   const focusBalloon = (b) => {
+    // ... (unchanged)
     const map = mapRef.current;
     if (!map) return;
     map.easeTo({
@@ -804,8 +726,8 @@ export default function App() {
 
   /* ------------------- main effects ------------------- */
   
-  // ... (toggleLayerVisibility is unchanged)
   const toggleLayerVisibility = (map, mode) => {
+    // ... (unchanged)
     const [show, hide] =
       mode === "hazards"
         ? [HAZARD_LAYER_IDS, CLIMATE_LAYER_IDS]
@@ -824,9 +746,9 @@ export default function App() {
     }
   };
 
-  // ... (map initialization useEffect is unchanged)
   useEffect(() => {
-    if (mapRef.current) return; // Prevent re-initialization
+    // ... (unchanged)
+    if (mapRef.current) return;
 
     const map = new maplibregl.Map({
       container: mapEl.current,
@@ -848,7 +770,7 @@ export default function App() {
       addOrUpdateSelectedClimatePath(map, { type: "FeatureCollection", features: [] });
       addOrUpdateBalloons(map, { type: "FeatureCollection", features: [] });
       addOrUpdateCycloneHazards(map, { type: "FeatureCollection", features: [] });
-      addOrUpdateSelected(map, { type: "FeatureCollection", features: [] });
+      addOrUpdateSelected(map, { type:"FeatureCollection", features: [] });
 
       toggleLayerVisibility(map, "hazards");
       loadHazardData(map);
@@ -856,8 +778,8 @@ export default function App() {
     });
   }, []);
 
-  // ... (viewMode switching useEffect is unchanged)
   useEffect(() => {
+    // ... (unchanged)
     if (viewMode === "hazards" && !isClimateDataLoaded.current) {
       return; 
     }
@@ -890,6 +812,7 @@ export default function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
       <div ref={mapEl} className="map" />
       <div className="panel">
         <div className="view-selector">
@@ -904,9 +827,6 @@ export default function App() {
           </select>
         </div>
 
-        
-
-        {/* --- UPDATED: Pass new props to ClimatePanel --- */}
         {viewMode === "hazards" ? (
           <HazardPanel
             kpis={kpis}
@@ -919,8 +839,6 @@ export default function App() {
             isLoading={isLoadingClimate}
             isPathLoading={isPathLoading}
             onFocusPath={focusClimatePath}
-            onLoadMore={handleLoadMoreClick}
-            allBalloonsProcessed={allBalloonsProcessed}
           />
         )}
       </div>

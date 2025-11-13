@@ -6,30 +6,14 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #111827; /* Dark page background */
+  background-color: #111827;
   color: #f3f4f6;
 }
-
-#root {
-  width: 100vw;
-  height: 100vh;
-}
+#root { width: 100vw; height: 100vh; }
 
 /* ---------------- Main Layout ---------------- */
-.app {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.map {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
+.app { position: relative; width: 100%; height: 100%; }
+.map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 .panel {
   position: absolute;
   top: 16px;
@@ -37,7 +21,7 @@ body {
   z-index: 10;
   width: 400px;
   max-height: calc(100% - 32px);
-  background-color: rgba(31, 41, 55, 0.95); /* Dark panel background */
+  background-color: rgba(31, 41, 55, 0.95);
   border-radius: 8px;
   border: 1px solid #4b5563;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2),
@@ -46,7 +30,6 @@ body {
   flex-direction: column;
   overflow: hidden;
 }
-
 .panel h1 {
   font-size: 18px;
   font-weight: 600;
@@ -61,15 +44,10 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1px;
-  background-color: #374151; /* Separator color */
+  background-color: #374151;
   border-bottom: 1px solid #374151;
 }
-
-.kpi {
-  background-color: #4b5563; /* KPI background */
-  padding: 10px 12px;
-}
-
+.kpi { background-color: #4b5563; padding: 10px 12px; }
 .kpi .label {
   font-size: 11px;
   font-weight: 500;
@@ -77,7 +55,6 @@ body {
   text-transform: uppercase;
   margin-bottom: 4px;
 }
-
 .kpi .value {
   font-size: 22px;
   font-weight: 700;
@@ -86,11 +63,7 @@ body {
 }
 
 /* ---------------- List & Rows ---------------- */
-.list {
-  overflow-y: auto;
-  padding: 8px;
-}
-
+.list { overflow-y: auto; padding: 8px; flex-grow: 1; }
 .row {
   display: flex;
   align-items: center;
@@ -100,31 +73,16 @@ body {
   font-size: 13px;
   color: #d1d5db;
 }
-
-.row .emoji {
-  font-size: 16px;
-}
-.row .id {
-  font-weight: 600;
-  color: #f3f4f6;
-}
-
+.row .emoji { font-size: 16px; }
+.row .id { font-weight: 600; color: #f3f4f6; }
 .chip {
   font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
 }
-
-/* Row-specific styles */
-.row.danger {
-  background-color: rgba(255, 84, 112, 0.08);
-}
-
-.row.danger .chip {
-  background-color: #991b1b; /* Dark red */
-  color: #fecaca;
-}
+.row.danger { background-color: rgba(255, 84, 112, 0.08); }
+.row.danger .chip { background-color: #991b1b; color: #fecaca; }
 
 /* ---------------- MapLibre UI Overrides ---------------- */
 .maplibregl-popup-content {
@@ -133,7 +91,6 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 10px;
 }
-
 .maplibregl-popup-close-button {
   color: #555;
   font-size: 18px;
@@ -142,19 +99,14 @@ body {
   height: 28px;
 }
 
-/*
- =======================================================
-  NEW STYLES (You already had these, just include them)
- =======================================================
-*/
-
-/* Styles for the view selector dropdown */
+/* ---------------- View Selector ---------------- */
 .view-selector {
   padding: 12px 16px;
-  border-bottom: 1px solid #374151; /* Assuming dark theme */
+  border-bottom: 1px solid #374151;
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 .view-selector label {
   font-size: 13px;
@@ -171,47 +123,12 @@ body {
   font-size: 13px;
 }
 
-/* Style for the "warning" row (climate crossers) */
-.row.warning {
-  background-color: rgba(255, 234, 0, 0.08);
-}
+/* ---------------- Climate Rows ---------------- */
+.row.warning { background-color: rgba(255, 234, 0, 0.08); }
+.row.warning .emoji { filter: grayscale(30%); }
+.row.warning .chip { background-color: #a16207; color: #fef08a; }
 
-.row.warning .emoji {
-  filter: grayscale(30%);
-}
-
-.row.warning .chip {
-  background-color: #a16207; /* Dark yellow */
-  color: #fef08a;
-}
-
-/* --- Add these styles to the end of index.css --- */
-
-.load-more-container {
-  padding: 10px 8px;
-  text-align: center;
-  border-top: 1px solid #374151;
-}
-
-.load-more-container button {
-  background: #0ea5e9;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  width: 100%;
-}
-
-.load-more-container button:disabled {
-  background: #4b5563;
-  cursor: not-allowed;
-}
-
-/* --- Add these styles to the end of index.css --- */
-
+/* ---------------- About Modal Styles ---------------- */
 .about-modal {
   background: rgba(31, 41, 55, 0.95);
   border: 1px solid #4b5563;
@@ -223,25 +140,20 @@ body {
     0 10px 10px -5px rgba(0, 0, 0, 0.1);
   padding: 0;
 }
-
-/* This is the backdrop */
 .about-modal::backdrop {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
-
 .modal-content {
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
 }
-
 .modal-content h2 {
   margin: 0 0 10px 0;
   color: #ffffff;
   font-size: 20px;
 }
-
 .modal-content h3 {
   margin: 16px 0 8px 0;
   color: #2dd4bf; /* Accent color */
@@ -249,24 +161,18 @@ body {
   border-bottom: 1px solid #374151;
   padding-bottom: 4px;
 }
-
 .modal-content p {
   margin: 0 0 10px 0;
   line-height: 1.5;
   color: #d1d5db;
 }
-
 .modal-content ul {
   margin: 0 0 10px 0;
   padding-left: 20px;
   line-height: 1.5;
   color: #d1d5db;
 }
-
-.modal-content li {
-  margin-bottom: 6px;
-}
-
+.modal-content li { margin-bottom: 6px; }
 .modal-note {
   background-color: #4b5563;
   border: 1px solid #525f76;
@@ -276,7 +182,6 @@ body {
   font-size: 13px;
   line-height: 1.5;
 }
-
 .modal-button {
   background: #0ea5e9;
   color: #fff;
@@ -289,7 +194,10 @@ body {
   margin-top: 16px;
   align-self: flex-end;
 }
-
-.modal-button:hover {
-  background: #0284c7;
+.modal-button:hover { background: #0284c7; }
+.modal-note.modal-note-danger {
+  background-color: rgba(255, 84, 112, 0.08);
+  border: 1px solid #991b1b;
+  color: #fecaca;
 }
+.modal-note.modal-note-danger strong { color: #ffffff; }

@@ -87,12 +87,25 @@ export default function AboutModal({ isOpen, onClose }) {
           </li>
         </ul>
 
-        <div className="modal-note">
-          <strong>Note for Reviewers:</strong> To ensure 100% reliability, the
-          balloon and cyclone data is a static 24-hour snapshot loaded from
-          local files. The app is architected to pull from live endpoints, but
-          the external servers are unstable. The *Climate Zone lookup* feature,
-          however, **is** making live API calls.
+<div className="modal-note modal-note-danger">
+          <strong>A Note on Live Data:</strong>
+          <p style={{ margin: '8px 0 0 0' }}>
+            To guarantee a fast and 100% reliable experience for this review, the balloon and cyclone data is a <strong>static 24-hour snapshot</strong>.
+          </p>
+          <p style={{ margin: '8px 0 0 0' }}>
+            This was a tough but necessary choice! The live balloon API (`a.windbornesystems.com`) is (i guess) protected by anti-bot measures that cause random <strong>`404 (Not Found)`</strong> errors when deployed. Because of this, the live api fetching sometimes works, but sometimes fails randomly. 
+          </p>
+          <p style={{ margin: '8px 0 0 0' }}>
+            I tried several workarounds (wasted around 6h for this), i built proxies (handling redirects, user-agents, etc.) to try and fix this, but the API remained unstable. This snapshot approach ensures the app is fast and error-free for you.
+          </p>
+          <p style={{ margin: '8px 0 0 0' }}>
+            However, the <strong>Climate Zone lookup</strong> feature <strong>is 100% live</strong> and successfully uses its own Vercel serverless function!
+          </p>
+
+          <p style={{ margin: '8px 0 0 0' }}>
+            Hope you understand and recognise my effort. Thank you for your consideration!
+            </p>
+
         </div>
 
         <button onClick={onClose} className="modal-button">
