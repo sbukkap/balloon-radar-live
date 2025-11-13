@@ -86,15 +86,7 @@ export default function AboutModal({ isOpen, onClose }) {
             specific balloon's 24-hour flight path.
           </li>
         </ul>
-
-        <div className="modal-note">
-          <strong>Note for Reviewers:</strong> To ensure 100% reliability, the
-          balloon and cyclone data is a static 24-hour snapshot loaded from
-          local files. The app is architected to pull from live endpoints, but
-          the external servers are unstable. The *Climate Zone lookup* feature,
-          however, **is** making live API calls.
-        </div>
-
+        
         <button onClick={onClose} className="modal-button">
           Got it, Start Exploring
         </button>
