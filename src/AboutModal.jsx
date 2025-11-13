@@ -86,6 +86,26 @@ export default function AboutModal({ isOpen, onClose }) {
             specific balloon's 24-hour flight path.
           </li>
         </ul>
+
+        <div className="modal-note modal-note-danger">
+  <strong>A Note on Live Data (You are on the Live Version):</strong>
+  <p style={{ margin: '8px 0 0 0' }}>
+    This version of the app pulls from <strong> live APIs</strong>. The balloon data server, however, is unstable and may be blocking this deployment.
+  </p>
+  <p style={{ margin: '8px 0 0 0' }}>
+    If you see `404` errors or the app data fails to load for a while, **please use the 100% reliable static version instead:**
+  </p>
+
+  {/* --- IMPORTANT: PASTE YOUR STABLE LINK HERE --- */}
+  <a 
+    href="https://balloon-radar-live-git-stati-f4f209-shreekars-projects-8dfdfda9.vercel.app/" 
+    target="_blank" 
+    rel="noopener noreferrer" 
+    className="modal-button-link"
+  >
+    Go to Stable (Static Data) Version
+  </a>
+</div>
         
         <button onClick={onClose} className="modal-button">
           Got it, Start Exploring
